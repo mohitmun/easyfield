@@ -1,0 +1,27 @@
+require 'googleauth'
+require 'googleauth/stores/file_token_store'
+require 'fileutils'
+require 'google/apis/gmail_v1'
+require 'rmail'
+Gmail = Google::Apis::GmailV1
+gmail = Gmail::GmailService.new
+local_url = "http://localhost:3000"
+client_id = Google::Auth::ClientId.new("705897375925-i3uets68hada6uuf8gootln7b4tg73ak.apps.googleusercontent.com", "74phjI-_NPRTpLShTqYHKEoP")
+token_store = Google::Auth::Stores::FileTokenStore.new(:file => "lol1")
+authorizer = Google::Auth::UserAuthorizer.new(client_id, [Gmail::AUTH_SCOPE, "https://www.google.com/calendar/feeds"], token_store)
+user_id = "default"
+credentials = authorizer.get_credentials("default")
+if credentials.nil?
+  url = authorizer.get_authorization_url(base_url: local_url)
+  puts "Open the following URL in your browser and authorize the application."
+  puts url
+  puts "Enter the authorization code:"
+end
+  credentials = authorizer.get_and_store_credentials_from_code(user_id: user_id, code: code, base_url: local_url)
+gmail.authorization = credentials
+message = RMail::Message.new
+message.header['To'] = "mohmun16@gmail.com"
+message.header['From'] = "nagori.parth@gmail.com"
+message.header['Subject'] = "wohoo"
+message.body = "dududududuede"
+gmail.send_user_message('me', upload_source: StringIO.new(message.to_s), content_type: 'message/rfc822')

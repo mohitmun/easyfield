@@ -1,0 +1,41 @@
+!!!
+%html
+  %head
+    %meta{:content => "text/html; charset=UTF-8", "http-equiv" => "Content-Type"}/
+    %title Flock - Google for Work
+    / = Gon::Base.render_data
+    = stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true
+    = javascript_include_tag "application", "data-turbolinks-track" => true
+    = csrf_meta_tags
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.3.7/js/tether.js"></script>
+    <link rel='stylesheet' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.4/css/bootstrap.min.css" integrity="sha384-2hfp1SzUoho7/TsGGGDaFdsuuDL0LX2hnUp6VkX3CUQ2K4K+xjboZdsXyp4oUHZj" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.4/js/bootstrap.min.js" integrity="sha384-VjEeINv9OSwtWFLAtmc4JCtEJXXBub00gtSnszmspDLCtC0I4z4nqz7rEFbIZLLU" crossorigin="anonymous"></script>
+    / <script src="http://d3js.org/d3.v3.min.js"></script>
+    / <script src="https://cdnjs.cloudflare.com/ajax/libs/Shuffle/4.0.2/shuffle.min.js"></script>
+  - if !["drive", "agenda"].include?(params[:action])
+    %body
+      %nav.navbar.navbar-dark.bg-inverse{style: "padding-left:150px;padding-right:150px;"}
+        .container-fluid
+          / Brand and toggle get grouped for better mobile display
+          .navbar-header
+            %a.navbar-brand{:href => "/"} Flock - Google For Work
+          / Collect the nav links, forms, and other content for toggling
+          %ul.nav.navbar-nav
+            %li
+              .pull-md-right.nav-item
+                / Welcome
+            /   %li.nav-item
+            /     %a.nav-link{:title => "Premium", :href => profiles_upload_resume_path, :style => "padding-top: 10px;"} Upload Resume
+            /   %li.nav-item
+            /     %a.nav-link{:href => "/profiles", :style => "padding-top: 10px;"} Sourced
+            /   %li.nav-item
+            /     %a.nav-link{:title => "Premium", :href => "/api", :style => "padding-top: 10px;"} API
+            /   %li.nav-item
+            /     %a.nav-link{:title => "Premium", :href => "/organizations", :style => "padding-top: 10px;"} Organizations
+            /   %li
+            /   <form class="form-inline pull-xs-right"><input class="form-control" type="text" placeholder="Search"><button class="btn btn-outline-info" type="submit">Search</button></form>
+      %div{style: "padding: 0px 250px 0px 250px;"}
+        = yield
+  - else
+    = yield

@@ -1,0 +1,8 @@
+development:
+  adapter: postgresql
+  encoding: utf8
+  database: easyfield
+  pool: 5
+  host: localhost
+  username: mohitmunjani
+  password: baldor123

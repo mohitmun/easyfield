@@ -1,0 +1,26 @@
+/ %style
+/   .form-control:focus {
+/   border-color: #FF0000;
+/   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(255, 0, 0, 0.6);
+/ }
+%div{style: "padding:20px;width:100%; height:100%; color: #0abe50;" }
+  %input.form-control#formGroupExampleInput{"type"=>"text", "placeholder"=>"Search Drive", style: "border-color: #0abe50;"}
+  %div{style: "margin-top: 20px;"}
+    - limit = 100
+    -page_token = nil
+    - begin
+      - result = current_user.get_drive_instance.list_files(q: @query,page_size: [limit, 100].min,page_token: page_token,fields: 'files(id,name),next_page_token')
+      - result.files.each do |file|
+        %div.dropdown{style: "font-size: 14px;color: #0abe50;"}
+          #dropdownMenu1.dropdown-toggle{"data-toggle"=>"dropdown","aria-haspopup"=>"true", "aria-expanded"=>"false", style: "cursor: pointer;"}
+            <i class="fa fa-file" aria-hidden="true"></i>
+            = file.name[0..25]
+          %div.dropdown-menu{"aria-labelledby"=>"dropdownMenu1"}
+            %a.dropdown-item{"href"=> "/download?file_id=#{file.id}&file_name=#{file.name}&mime=#{file.mime_type}", target:"_blank" } Download
+            %a.dropdown-item{"href"=> '/attach?' +params.merge(file_id: file.id, file_name: file.name, mime: file.mime_type, redirect_to: url_for(params)).to_query} Attach
+      - limit -= result.files.length
+      - if result.next_page_token
+        - page_token = result.next_page_token
+      - else
+        - page_token = nil
+    - end while !page_token.nil? && limit > 0

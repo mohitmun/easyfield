@@ -1,0 +1,6 @@
+.row{style: "margin-top: 250px;"}
+  .offset-md-2.col-md-8
+    - if @message
+      %h2= @message
+    - else
+      = link_to "Connect Google", @google_consent_url, class: "btn btn-primary"

@@ -1,0 +1,19 @@
+- events = current_user.todays_agenda
+%div{style: "padding:20px;width:100%; height:100%;"}
+  %h2 Today's Agenda
+  - events.each do |event|
+    %b= event.start.date_time.strftime("%k:%M")
+    = event.summary
+    %br
+  %input.form-control#time{"type"=>"text", "placeholder"=>"Enter Time", style: "border-color: #0abe50;margin-top: 20px"}
+  %input.form-control#summary{"type"=>"text", "placeholder"=>"Summary", style: "border-color: #0abe50;margin-top: 10px"}
+  .btn.btn-primary.submit_event{"data-disable-with"=> "Creating", style: "background-color: #0abe50; margin-top: 10px"} Create
+%script
+  :plain
+    $(document).on("click", ".submit_event", function(){
+      $(this).addClass("disabled");
+      $(this).text("Creating..");
+      $.ajax({url: '/create_event?summary=' + $("#summary").val() + "&start=" + $("#time").val().split("-")[0] + "&end=" + $("#time").val().split("-")[1], type: 'GET', success: function(){
+        window.location.reload();
+      }});
+    });
