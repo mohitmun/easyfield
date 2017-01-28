@@ -1,6 +1,28 @@
-.row{style: "margin-top: 250px;"}
+.row{style: "margin-top: 25px;"}
   .offset-md-2.col-md-8
-    - if @message
-      %h2= @message
-    - else
-      = link_to "Connect Google", @google_consent_url, class: "btn btn-primary"
+    - user = User.find(session[:fuck])
+    - personal_info = user.get_personal_info
+    %h3 Auto Populated Fields
+    / = user.inspect
+    .form-group
+      %label{:for => "formGroupExampleInput"} First Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:first_name]}
+    .form-group
+      %label{:for => "formGroupExampleInput"} First Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:last_name]}
+    .form-group
+      %label{:for => "formGroupExampleInput"} First Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:dob]}
+    .form-group
+      %label{:for => "formGroupExampleInput"} First Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:gender]}
+    .form-group
+      %label{:for => "formGroupExampleInput"} First Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  user.gmail_address}
+    %h5 Documents
+    Pan
+    - user.get_pan_card_preview.each do |file|
+      %div
+        = file[:name]
+      %div
+        = image_tag "/" + file[:name], style: "height: 200px"

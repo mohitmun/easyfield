@@ -5,6 +5,7 @@ require 'googleauth'
 require 'googleauth/stores/file_token_store'
 require 'fileutils'
 require 'google/apis/calendar_v3'
+require 'google/apis/people_v1'
 require 'google/apis/gmail_v1'
 require 'rmail'
 class User < ActiveRecord::Base
@@ -64,6 +65,13 @@ class User < ActiveRecord::Base
     calendar = Calendar::CalendarService.new
     calendar.authorization = get_credentials
     return calendar
+  end
+
+
+  def people
+    peopleService =  Google::Apis::PeopleV1::PeopleService.new
+    peopleService.authorization = get_credentials
+    return peopleService
   end
 
   def schedule(summary, start, _end)
@@ -132,10 +140,67 @@ class User < ActiveRecord::Base
       return file
     end
 
+  def get_list_proofs
+    list_of_proofs = []
+  end
+
+  def get_personal_info
+    return {:birthday=>{:day=>16, :month=>12, :year=>1992}, :dob=>"16/12/1992", :gender=>"male", :photo=>"https://lh3.googleusercontent.com/-Rlsptw9SvzQ/AAAAAAAAAAI/AAAAAAAABKA/nZfXuUmIJBI/photo.jpg", :first_name=>"mohit", :last_name=>"munjani"}
+    person = people.get_person("people/me")
+    return {birthday:{day: person.birthdays.last.date.day, month: person.birthdays.last.date.month, year: person.birthdays.last.date.year },dob: "#{person.birthdays.last.date.day}/#{person.birthdays.last.date.month}/#{person.birthdays.last.date.year}", gender: person.genders.last.value, photo: person.photos.last.url, first_name: person.names.last.given_name, last_name: person.names.last.family_name}
+  end
+
+  def get_pan_card_preview
+    return [{:name=>"IMG_20170128_110956324.jpg", :type=>"image/jpeg", :path=>"public/IMG_20170128_110956324.jpg"}]
+    result = []
+    file_list = get_drive_instance.list_files(q: "fullText contains 'permanent account number' and  mimeType contains 'image'")
+    file_list.files.each do |file|
+      result << {name: file.name, type: file.mime_type, path: download(file.id, file.name).path}
+    end
+    return result
+  end
+
+
+  def get_dl_preview
+    return [{:name=>"IMG_20170128_110956324.jpg", :type=>"image/jpeg", :path=>"public/IMG_20170128_110956324.jpg"}]
+    result = []
+    file_list = get_drive_instance.list_files(q: "fullText contains 'permanent account number' and  mimeType contains 'image'")
+    file_list.files.each do |file|
+      result << {name: file.name, type: file.mime_type, path: download(file.id, file.name).path}
+    end
+    return result
+  end
+  # Age proof:
+  #   Pan Card
+  #   Driving License
+  #   Aadhar Card with Affidavit
+  #   Passport
+  # Income Proof
+  #   Salary slip
+  # Proof of residence
+  #   Driving License
+  #   Aadhar Card with Affidavit
+  #   Passport
+  # Identity Proof
+  #   Driving License
+  #   Aadhar Card with Affidavit
+  #   Pan Card
+  #   Passport
+  #   Voter
+
+  # u.get_drive_instance.list_files(q: "fullText contains 'mh01'")
+  # u.get_gmail_instance.list_user_messages("me", q: "pan card has:attachment -in:chats filename:jpg")
+  #u.get_gmail_instance.get_user_message("me", "1577f6dd83d57787")
+  # u.get_gmail_instance.get_user_message_attachment("me", "1577f6dd83d57787","ANGjdJ92_VgevbHhFzOBo_OTYZ8JI1i_w_wOGsk3RRBp_ueUIp6WIgZEInYvhFiyWPi_lAMqjX_MVW8D8_rbDbBaR_yzFqMzKe8rsGiX1lgH_v5706efr3gxX7vjVwuJ-3LVPZ-B904aRjezmuv05fwKMciTvogIGgNuaCRFmOdy64HH2dCc99u3HEfuFmvduCdDhAXMUPbKcjAMq_0JQMP7MHBqBnvyunzAXpAe8jXMk5tXL6KSoKMqn2eACjU5_mqo_jvjeVYiQC5gEIii_NEQqegsOUxmbhoV_stRUGqsNf_55CwqIfRZjtSsLjc")
+ # f = File.open("mama", "wb")f.write(att_res.data);puts "c"
+  def save_attachment
+    
+  end
+
   def get_authorizer
     client_id = Google::Auth::ClientId.new(CLI_ID, CLI_SEC)
     # token_store = Google::Auth::Stores::FileTokenStore.new(:file => "lol")
-    authorizer = Google::Auth::UserAuthorizer.new(client_id, [Drive::AUTH_DRIVE, Gmail::AUTH_SCOPE, "https://www.google.com/calendar/feeds"], token_store)
+    authorizer = Google::Auth::UserAuthorizer.new(client_id, [Drive::AUTH_DRIVE, Gmail::AUTH_SCOPE, "https://www.google.com/calendar/feeds", Google::Apis::PeopleV1::AUTH_USER_BIRTHDAY_READ, Google::Apis::PeopleV1::AUTH_USERINFO_PROFILE,Google::Apis::PeopleV1::AUTH_USER_ADDRESSES_READ,Google::Apis::PeopleV1::AUTH_USER_PHONENUMBERS_READ], token_store)
   end
 
   def send_mail(to, subject, body)

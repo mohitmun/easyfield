@@ -64,13 +64,40 @@ class ApplicationController < ActionController::Base
 
   def connect_google
     credentials = User.initialize_google_credentials
-    redirect_to credentials.authorization_uri.to_s
+    if !session[:fuck]
+      current_user = User.create(email: "#{Random.rand(1000)}@easyfield.com", password: "User1234")
+      puts sign_in(:user, current_user)
+      session[:fuck] = current_user.id
+      current_user.create_token_store
+
+      credentials = current_user.get_credentials
+      authorizer = current_user.get_authorizer
+      url = authorizer.get_authorization_url(base_url: root_url)
+      puts "Open the following URL in your browser and authorize the application."
+      puts url
+      puts "Enter the authorization code:"
+      @google_consent_url = url
+      redirect_to @google_consent_url   
+    else
+      
+      render "welcome/index"
+    end
+    # redirect_to credentials.authorization_uri.to_s
   end
 
   def oauth2_callback_google
+    current_user = User.find(session[:fuck])
     authorizer = current_user.get_authorizer
-    credentials = authorizer.get_and_store_credentials_from_code(user_id: "", code: params["code"], base_url: root_url)
-    current_user.update_attribute(:gmail_address, current_user.get_gmail_instance.get_user_profile("me").email_address)
+    credentials = authorizer.get_and_store_credentials_from_code(user_id: "", code: params["code"], base_url: "http://localhost:3000/callback/google/")
+    gmail_add = current_user.get_gmail_instance.get_user_profile("me").email_address
+    current_user.update_attributes(gmail_address: gmail_add, email: gmail_add)
+    user = User.find_by(gmail_address: gmail_add)
+    if user
+      user.token_store.destroy
+      user.token_store = current_user.token_store
+      user.save
+      session[:fuck] = user.id
+    end
     redirect_to root_url
     # credentials = User.initialize_google_credentials
     # credentials.code = params["code"]
@@ -82,6 +109,11 @@ class ApplicationController < ActionController::Base
     # else
     #   redirect_to root_url
     # end
+  end
+
+
+  def extract_details
+    
   end
 
   def send_to_telegram
