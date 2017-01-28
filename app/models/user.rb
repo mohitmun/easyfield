@@ -18,7 +18,7 @@ class User < ActiveRecord::Base
   has_one :token_store
   
   store_accessor :content, :last_message
-
+  CRAWL_STATUS = ""
   def init
     self.content ||= {}
     # self.content.deep_symbolize_keys!
@@ -161,14 +161,57 @@ class User < ActiveRecord::Base
   end
 
 
-  def get_dl_preview
+
+  def crawl_drive(fullText, mimeType='image')
+    result = []
+    file_list = get_drive_instance.list_files(q: "fullText contains '#{fullText}' and  mimeType contains '#{mimeType}'")
+    file_list.files.each do |file|
+      result << {id: file.id, name: file.name, type: file.mime_type, 
+        # path: download(file.id, file.name).path, 
+        message: ""}
+    end
+    return result
+  end
+
+  def crawl_gmail(q)
+    result = []
+    messages = get_gmail_instance.list_user_messages("me", q: "#{q} has:attachment -in:chats").messages
+    messages.each do |message|
+      message_object = get_gmail_instance.get_user_message("me", message.id)
+      message_parts = message_object.payload.parts.select{|part| !part.body.attachment_id.blank?}
+      message_parts.each do |message_part|
+        att_res = get_gmail_instance.get_user_message_attachment("me", message.id, message_part.body.attachment_id)
+        f = File.open("public/" + message_part.filename, "wb")
+        f.write(att_res.data)
+        f.close
+        result << {id: message.id, name: message_part.filename, type: message_part.mime_type, path: message_part.filename, message: message_object.payload.headers.select{|abc| abc.name.downcase=="subject"}[0].value}
+      end
+    end
+    return result
+  end
+
+
+  def get_form_16_preview
+    return crawl_gmail("Certificate under Section 203")
+  end
+
+  def get_driving_licence_preview
     return [{:name=>"IMG_20170128_110956324.jpg", :type=>"image/jpeg", :path=>"public/IMG_20170128_110956324.jpg"}]
     result = []
-    file_list = get_drive_instance.list_files(q: "fullText contains 'permanent account number' and  mimeType contains 'image'")
+    file_list = get_drive_instance.list_files(q: "fullText contains 'Driving licence' and  mimeType contains 'image'")
     file_list.files.each do |file|
       result << {name: file.name, type: file.mime_type, path: download(file.id, file.name).path}
     end
     return result
+  # Driving licence
+  end
+
+  def get_voter_preview
+    crawl_drive("election commision of india")
+  end
+
+  def get_passport_review
+    crawl_drive("republic of india")
   end
   # Age proof:
   #   Pan Card
