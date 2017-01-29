@@ -2,8 +2,12 @@
   .offset-md-2.col-md-8
     - user = User.find(session[:fuck])
     - personal_info = user.get_personal_info
-    %h3 Auto Populated Fields
+    / %h3 Auto Populated Fields
     / = user.inspect
+    %h3
+      #div
+        %span#crawl_status
+        %span= image_tag "/" + "loading_spinner.gif", style: "height: 50px" if !user.crawl_status.include?("Done")
     .form-group
       %label{:for => "formGroupExampleInput"} First Name
       %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:first_name]}
@@ -19,10 +23,35 @@
     .form-group
       %label{:for => "formGroupExampleInput"} First Name
       %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  user.gmail_address}
-    %h5 Documents
-    Pan
-    - user.get_pan_card_preview.each do |file|
-      %div
-        = file[:name]
-      %div
-        = image_tag "/" + file[:name], style: "height: 200px"
+    - user.get_docs.each do |key, value|
+      %h5= key
+      - value.each do |file|
+        .row{style: "margin-top: 15px"}
+          .col-md-4
+            = image_tag "/" + file["name"], style: "height: 200px"
+          .col-md-4
+            .row
+              %b= "Document: " 
+              = file["document_type"]
+            .row
+              %b= "Source: " 
+              = file["source"]
+            .row
+              %b= "Name: " 
+              = file["name"]
+            .row
+              %b= "File type: " 
+              = file["mime_type"]
+            - if !file["message"].blank?
+              .row
+                %b= "Message: " 
+                = file["message"]
+
+
+
+%script
+  :plain  
+    var renewUsers = function(count){
+      $('#crawl_status').text(count);
+    }
+    gon.watch('crawl_status', {interval: 2000}, renewUsers);

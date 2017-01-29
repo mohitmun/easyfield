@@ -17,8 +17,7 @@ class User < ActiveRecord::Base
   after_initialize :init
   has_one :token_store
   
-  store_accessor :content, :last_message
-  CRAWL_STATUS = ""
+  store_accessor :content, :last_message, :crawl_status, :downloaded_docs
   def init
     self.content ||= {}
     # self.content.deep_symbolize_keys!
@@ -150,25 +149,14 @@ class User < ActiveRecord::Base
     return {birthday:{day: person.birthdays.last.date.day, month: person.birthdays.last.date.month, year: person.birthdays.last.date.year },dob: "#{person.birthdays.last.date.day}/#{person.birthdays.last.date.month}/#{person.birthdays.last.date.year}", gender: person.genders.last.value, photo: person.photos.last.url, first_name: person.names.last.given_name, last_name: person.names.last.family_name}
   end
 
-  def get_pan_card_preview
-    return [{:name=>"IMG_20170128_110956324.jpg", :type=>"image/jpeg", :path=>"public/IMG_20170128_110956324.jpg"}]
-    result = []
-    file_list = get_drive_instance.list_files(q: "fullText contains 'permanent account number' and  mimeType contains 'image'")
-    file_list.files.each do |file|
-      result << {name: file.name, type: file.mime_type, path: download(file.id, file.name).path}
-    end
-    return result
-  end
-
-
 
   def crawl_drive(fullText, mimeType='image')
     result = []
     file_list = get_drive_instance.list_files(q: "fullText contains '#{fullText}' and  mimeType contains '#{mimeType}'")
     file_list.files.each do |file|
-      result << {id: file.id, name: file.name, type: file.mime_type, 
-        # path: download(file.id, file.name).path, 
-        message: ""}
+      result << {"id": file.id, "name": file.name, "mime_type": file.mime_type, 
+        "path": download(file.id, file.name).path, 
+        "message": "", "source": "Drive"}
     end
     return result
   end
@@ -184,7 +172,7 @@ class User < ActiveRecord::Base
         f = File.open("public/" + message_part.filename, "wb")
         f.write(att_res.data)
         f.close
-        result << {id: message.id, name: message_part.filename, type: message_part.mime_type, path: message_part.filename, message: message_object.payload.headers.select{|abc| abc.name.downcase=="subject"}[0].value}
+        result << {"id": message.id, "name": message_part.filename, "mime_type": message_part.mime_type, "path": message_part.filename, "message": message_object.payload.headers.select{|abc| abc.name.downcase=="subject"}[0].value, "source": "Gmail"}
       end
     end
     return result
@@ -192,27 +180,50 @@ class User < ActiveRecord::Base
 
 
   def get_form_16_preview
-    return crawl_gmail("Certificate under Section 203")
+    results = crawl_gmail("Certificate under Section 203")
+    results.each do |result|
+      result.store(:document_type, "Voter Card")
+    end
+    return results
   end
 
   def get_driving_licence_preview
-    return [{:name=>"IMG_20170128_110956324.jpg", :type=>"image/jpeg", :path=>"public/IMG_20170128_110956324.jpg"}]
-    result = []
-    file_list = get_drive_instance.list_files(q: "fullText contains 'Driving licence' and  mimeType contains 'image'")
-    file_list.files.each do |file|
-      result << {name: file.name, type: file.mime_type, path: download(file.id, file.name).path}
+    results = crawl_drive("Driving licence")
+    results.each do |result|
+      result.store(:document_type, "Driving Licence")
     end
-    return result
+    return results
   # Driving licence
   end
 
   def get_voter_preview
-    crawl_drive("election commision of india")
+    results = crawl_drive("election commision of india")
+    results.each do |result|
+      result.store(:document_type, "Voter Card")
+    end
+    return results
   end
 
-  def get_passport_review
-    crawl_drive("republic of india")
+  def get_passport_preview
+    results = crawl_drive("republic of india")
+    results.each do |result|
+      result.store(:document_type, "Passport")
+    end
+    return results
   end
+
+  def get_pan_card_preview
+    s = "permanent account number"
+    results = crawl_drive(s)
+    results.each do |result|
+      result.store(:document_type, "Pan Card")
+    end
+    return results
+
+  end
+
+
+
   # Age proof:
   #   Pan Card
   #   Driving License
@@ -231,11 +242,44 @@ class User < ActiveRecord::Base
   #   Passport
   #   Voter
 
-  # u.get_drive_instance.list_files(q: "fullText contains 'mh01'")
-  # u.get_gmail_instance.list_user_messages("me", q: "pan card has:attachment -in:chats filename:jpg")
-  #u.get_gmail_instance.get_user_message("me", "1577f6dd83d57787")
-  # u.get_gmail_instance.get_user_message_attachment("me", "1577f6dd83d57787","ANGjdJ92_VgevbHhFzOBo_OTYZ8JI1i_w_wOGsk3RRBp_ueUIp6WIgZEInYvhFiyWPi_lAMqjX_MVW8D8_rbDbBaR_yzFqMzKe8rsGiX1lgH_v5706efr3gxX7vjVwuJ-3LVPZ-B904aRjezmuv05fwKMciTvogIGgNuaCRFmOdy64HH2dCc99u3HEfuFmvduCdDhAXMUPbKcjAMq_0JQMP7MHBqBnvyunzAXpAe8jXMk5tXL6KSoKMqn2eACjU5_mqo_jvjeVYiQC5gEIii_NEQqegsOUxmbhoV_stRUGqsNf_55CwqIfRZjtSsLjc")
- # f = File.open("mama", "wb")f.write(att_res.data);puts "c"
+  def get_docs(refresh=false)
+    a = 0
+    if !downloaded_docs.blank? && !refresh
+      return downloaded_docs
+    end
+    downloaded_docs = {}
+    self.update_attribute(:crawl_status,"Searching for documents")
+    sleep a
+    self.update_attribute(:crawl_status,"Searching for Pan card")
+    sleep a
+    pan_cards = get_pan_card_preview
+    sleep a
+    self.update_attribute(:crawl_status,"Searching for Driving licence")
+    sleep a
+    driving_licences = get_driving_licence_preview
+    sleep a
+    self.update_attribute(:crawl_status,"Searching for Passport")
+    sleep a
+    passports = get_passport_preview
+    sleep a
+    self.update_attribute(:crawl_status,"Searching for income proof")
+    sleep a
+    form_16s = get_form_16_preview
+    sleep a
+    self.update_attribute(:crawl_status,"Searching for Voter card")
+    sleep a
+    voter_cards = get_voter_preview
+    sleep a
+    self.update_attribute(:crawl_status,"Searching Done")
+    downloaded_docs["Age Proof"] = pan_cards + driving_licences + passports
+    downloaded_docs["Income Proof"] = form_16s
+    downloaded_docs["Proof of Residence"] = driving_licences + passports
+    downloaded_docs["Identity Proof"] = pan_cards + driving_licences + passports + voter_cards
+    self.downloaded_docs = downloaded_docs
+    self.save
+    return downloaded_docs
+  end
+
   def save_attachment
     
   end

@@ -79,8 +79,16 @@ class ApplicationController < ActionController::Base
       @google_consent_url = url
       redirect_to @google_consent_url   
     else
-      
-      render "welcome/index"
+      current_user = User.find(session[:fuck])
+      if current_user.crawl_status.blank?
+        current_user.delay.get_docs
+      end
+      gon.watch.crawl_status = current_user.crawl_status
+      if !params[:gon_return_variable].present?
+        respond_to do |format|
+          format.html {render "welcome/index"}
+        end
+      end
     end
     # redirect_to credentials.authorization_uri.to_s
   end
@@ -112,9 +120,13 @@ class ApplicationController < ActionController::Base
   end
 
 
-  def extract_details
-    
-  end
+  # def extract_details
+  #   current_user = User.find(session[:fuck])
+  #   if current_user.crawl_status.blank?
+  #     current_user.crawl_docs
+  #   end
+  #   gon.watch.crawl_status = current_user.crawl_status
+  # end
 
   def send_to_telegram
     title = params[:title]
@@ -131,6 +143,5 @@ class ApplicationController < ActionController::Base
   end
 
   def index
-    
   end
 end
