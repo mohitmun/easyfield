@@ -81,7 +81,7 @@ class ApplicationController < ActionController::Base
     else
       current_user = User.find(session[:fuck])
       if current_user.crawl_status.blank?
-        current_user.delay.get_docs
+        current_user.delay.get_docs(params[:authorized].present?)
       end
       gon.watch.crawl_status = current_user.crawl_status
       if !params[:gon_return_variable].present?
@@ -101,7 +101,7 @@ class ApplicationController < ActionController::Base
     current_user.update_attributes(gmail_address: gmail_add, email: gmail_add)
     user = User.find_by(gmail_address: gmail_add)
     if user
-      user.token_store.destroy
+      user.token_store.destroy rescue nil
       user.token_store = current_user.token_store
       user.save
       session[:fuck] = user.id

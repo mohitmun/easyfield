@@ -1,34 +1,62 @@
 .row{style: "margin-top: 25px;"}
-  .offset-md-2.col-md-8
-    - user = User.find(session[:fuck])
-    - personal_info = user.get_personal_info
-    / %h3 Auto Populated Fields
-    / = user.inspect
-    %h3
-      #div
+  - user = User.find(session[:fuck])
+  - personal_info = user.get_personal_info
+  / %h3 Auto Populated Fields
+  / = user.inspect
+  %h3
+    #div
+      - if !params[:authorized].present?
+        On Authorizing, EasyField will search for keywords like 'pan number', 'driving licence', "election commision" in your Google account. We do not any information other than what you have selected to upload. We Respect your privacy
+        %br
+        %br
+        %div
+          = link_to "Authorize EasyField", "/?authorized=true", class: "btn btn-primary"
+      - else
         %span#crawl_status
-        %span= image_tag "/" + "loading_spinner.gif", style: "height: 50px" if !user.crawl_status.include?("Done")
+      %span= image_tag "https://divorcealliance.com/images/preloader.gif", style: "height: 50px"
+  %br
+  .col-md-4
     .form-group
       %label{:for => "formGroupExampleInput"} First Name
       %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:first_name]}
     .form-group
-      %label{:for => "formGroupExampleInput"} First Name
+      %label{:for => "formGroupExampleInput"} Date of Birth
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:dob]}
+  .col-md-4
+    .form-group
+      %label{:for => "formGroupExampleInput"} Father's Name
+      %input#formGroupExampleInput.form-control{:placeholder => "Father's name", :type => "text", :value =>  ""}
+    .form-group
+      %label{:for => "formGroupExampleInput"} Gender
+      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:gender]}
+  .col-md-4
+    .form-group
+      %label{:for => "formGroupExampleInput"} Last Name
       %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:last_name]}
     .form-group
-      %label{:for => "formGroupExampleInput"} First Name
-      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:dob]}
-    .form-group
-      %label{:for => "formGroupExampleInput"} First Name
-      %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  personal_info[:gender]}
-    .form-group
-      %label{:for => "formGroupExampleInput"} First Name
+      %label{:for => "formGroupExampleInput"} Email
       %input#formGroupExampleInput.form-control{:placeholder => "Example input", :type => "text", :value =>  user.gmail_address}
-    - user.get_docs.each do |key, value|
-      %h5= key
+  .col-md-12
+    .form-group
+      %label{:for => "formGroupExampleInput"} Address
+      %input#formGroupExampleInput.form-control{:placeholder => "Address", :type => "text", :value =>  ""}
+
+  - if params[:authorized].present?
+    - downloaded = user.downloaded_docs || []
+    - downloaded.each do |key, value|
+      %h3{style: "margin-top: 20px"}= key
       - value.each do |file|
-        .row{style: "margin-top: 15px"}
+        .row{style: "margin-top:15px; padding:15px;background: #fff;border: 1px solid #e1e8ed;"}
+          = radio_button_tag "mama#{key}", nil, nil,style: "position: absolute"
           .col-md-4
-            = image_tag "/" + file["name"], style: "height: 200px"
+            - if !file["mime_type"].include?("pdf")
+              = image_tag "/" + file["name"], style: "width: 200px"
+            - else
+              %object{style: "width: 200px", type: "application/pdf", data: "/#{file["name"]}#toolbar=0&navpanes=1&messages=1"}
+              /     var newPre = document.createElement('object');
+              / newPre.setAttribute("data", this.href+ "#toolbar=0&navpanes=1&messages=1");
+              / newPre.setAttribute("type", "application/pdf");
+              / newPre.setAttribute("style", "min-height:600px;width: 100%");
           .col-md-4
             .row
               %b= "Document: " 
@@ -46,6 +74,15 @@
               .row
                 %b= "Message: " 
                 = file["message"]
+          .col-md-4
+            %h6 ORC Results
+            - file["ocr"].store("raw_text", (file["ocr"]["raw_text"][1..30] + "....." rescue "")) rescue {}
+            - file["ocr"].store("mrz_code_line_1", (file["ocr"]["mrz_code_line_1"][1..10] + "....." rescue "")) rescue {}
+            - file["ocr"].store("mrz_code_line_2", (file["ocr"]["mrz_code_line_2"][1..10] + "....." rescue "")) rescue {}
+            = file["ocr"].inspect
+            - if file["verification_result"]
+              %h5{style: "margin-top: 10px"} Verification Result
+              = file["verification_result"]
 
 
 

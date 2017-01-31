@@ -144,10 +144,67 @@ class User < ActiveRecord::Base
   end
 
   def get_personal_info
-    return {:birthday=>{:day=>16, :month=>12, :year=>1992}, :dob=>"16/12/1992", :gender=>"male", :photo=>"https://lh3.googleusercontent.com/-Rlsptw9SvzQ/AAAAAAAAAAI/AAAAAAAABKA/nZfXuUmIJBI/photo.jpg", :first_name=>"mohit", :last_name=>"munjani"}
+    # return {:birthday=>{:day=>16, :month=>12, :year=>1992}, :dob=>"16/12/1992", :gender=>"male", :photo=>"https://lh3.googleusercontent.com/-Rlsptw9SvzQ/AAAAAAAAAAI/AAAAAAAABKA/nZfXuUmIJBI/photo.jpg", :first_name=>"mohit", :last_name=>"munjani"}
     person = people.get_person("people/me")
-    return {birthday:{day: person.birthdays.last.date.day, month: person.birthdays.last.date.month, year: person.birthdays.last.date.year },dob: "#{person.birthdays.last.date.day}/#{person.birthdays.last.date.month}/#{person.birthdays.last.date.year}", gender: person.genders.last.value, photo: person.photos.last.url, first_name: person.names.last.given_name, last_name: person.names.last.family_name}
+    return {birthday:{day: (person.birthdays.last.date.day rescue ""), month: (person.birthdays.last.date.month rescue ""), year: (person.birthdays.last.date.year rescue "") },dob: "#{(person.birthdays.last.date.day rescue "")}/#{(person.birthdays.last.date.month rescue "")}/#{(person.birthdays.last.date.year rescue "")}", gender: person.genders.last.value, photo: person.photos.last.url, first_name: person.names.last.given_name, last_name: person.names.last.family_name}
   end
+
+  def self.get_voter_id_verification(epic_no, name=nil, father=nil,age=nil, dob=nil)
+    response = RestClient.get("http://electoralsearch.in")
+    puts "getting to electoralsearch homepage"
+    @cookeis = response.cookies
+    token = response.body.scan(/return '(.{36})'/) rescue nil
+    params = {}
+    params["name"] = name if !name.blank?
+    params["epic_no"] = epic_no if !epic_no.blank?
+    params["age"] = age if !age.blank?
+    params["dob"] = dob if !dob.blank?
+    params["rln_name"] = father if !father.blank?
+
+    if token.blank?
+      puts "Error: Page token id is blank"
+    else
+      params["reureureired"] = token[0][0]
+    end
+    params["search_type"] = !epic_no.blank? ? "epic" : "details"
+    puts "===="
+    puts epic_no
+    puts "===="
+    query_string = ""
+    params.each do |k,v|
+      query_string = query_string + "&#{k}=#{v}"
+    end
+    html_res = RestClient.get("http://electoralsearch.in/Search?fromPager=true&page_no=1&results_per_page=100" + query_string, {cookies: @cookeis})
+    puts "http://electoralsearch.in/Search?fromPager=true&page_no=1&results_per_page=100" + query_string
+    # while html_res.body.downcase.include?("invalid captcha")
+    #   captch_text = Company.get_voter_captcha
+    #   if !captch_text.blank?
+    #     html_res = RestClient.get("http://electoralsearch.in/Search?from_pager=true&page_no=1&results_per_page=100" + query_string + "&", {cookies: @cookeis})
+    #   end
+    # end
+    results = {}
+    parsed_doc = JSON.parse(html_res.body.squish)
+    results["results"] = parsed_doc["response"]["docs"].first
+    results["count"] = parsed_doc["response"]["numFound"]
+    return results
+  end
+
+    def self.get_driving_licence_verification(licence_no)
+    result = {}
+    rand = 123
+    fhtml = `curl -c #{rand} 'https://sarathi.nic.in:8443/nrportal/sarathi/DlDetRequest.jsp' -H 'DNT: 1' -H 'Accept-Encoding: gzip, deflate, sdch, br' -H 'Accept-Language: en-US,en;q=0.8' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'Cache-Control: max-age=0' -H 'Connection: keep-alive' --compressed --insecure`
+    fhtml_doc = Nokogiri(fhtml)
+    html_res = `curl -b #{rand} 'https://sarathi.nic.in:8443/nrportal/sarathi/DlDetRequest.jsp' -H 'Origin: https://sarathi.nic.in:8443' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: en-US,en;q=0.8' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36' -H 'Content-Type: application/x-www-form-urlencoded' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'Cache-Control: max-age=0' -H 'Referer: https://sarathi.nic.in:8443/nrportal/sarathi/DlDetRequest.jsp' -H 'Connection: keep-alive' -H 'DNT: 1' --data 'dlform=dlform&dlform%3AstateLevel=&dlform%3ADLNumber=#{licence_no}&dlform%3Asub=SUBMIT&javax.faces.ViewState=#{fhtml_doc.css("[name='javax.faces.ViewState']").attr("value").text}' --compressed --insecure`
+    html_doc = Nokogiri(html_res)
+    result[:status] = html_doc.css("#detdisp > table:nth-child(6) > tbody > tr > td:nth-child(2) > span").text
+    result[:date_of_issue] = html_doc.css("#detdisp > table:nth-child(7) > tbody > tr > td:nth-child(2) > span").text
+    result[:last_transacted_at] = html_doc.css("#detdisp > table:nth-child(8) > tbody > tr > td:nth-child(2) > span").text
+    result[:valid_from] = html_doc.css("tbody > tr > td > table > tbody > tr:nth-child(1) > td:nth-child(3) > span").text
+    result[:valid_to] = html_doc.css("tbody > tr > td > table > tbody > tr:nth-child(1) > td:nth-child(5) > span").text
+    return result
+  end
+
+  
 
 
   def crawl_drive(fullText, mimeType='image')
@@ -163,7 +220,7 @@ class User < ActiveRecord::Base
 
   def crawl_gmail(q)
     result = []
-    messages = get_gmail_instance.list_user_messages("me", q: "#{q} has:attachment -in:chats").messages
+    messages = get_gmail_instance.list_user_messages("me", q: "#{q} has:attachment -in:chats").messages || []
     messages.each do |message|
       message_object = get_gmail_instance.get_user_message("me", message.id)
       message_parts = message_object.payload.parts.select{|part| !part.body.attachment_id.blank?}
@@ -182,7 +239,7 @@ class User < ActiveRecord::Base
   def get_form_16_preview
     results = crawl_gmail("Certificate under Section 203")
     results.each do |result|
-      result.store(:document_type, "Voter Card")
+      result.store(:document_type, "form 16")
     end
     return results
   end
@@ -191,6 +248,11 @@ class User < ActiveRecord::Base
     results = crawl_drive("Driving licence")
     results.each do |result|
       result.store(:document_type, "Driving Licence")
+      ocr_res = validate_doc(VALIDATION_KEYS["Driving Licence"], result[:name])
+      result.store(:ocr, ocr_res)
+      if !ocr_res[:license_number].blank?
+        result.store(:verification_result, User.get_driving_licence_verification(ocr_res[:license_number]))
+      end
     end
     return results
   # Driving licence
@@ -200,6 +262,10 @@ class User < ActiveRecord::Base
     results = crawl_drive("election commision of india")
     results.each do |result|
       result.store(:document_type, "Voter Card")
+      result.store(:ocr, ocr_res = validate_doc(VALIDATION_KEYS["Voter Card"], result[:name]))
+      if !ocr_res[:voter_id].blank?
+        result.store(:verification_result, User.get_voter_id_verification(ocr_res[:voter_id]))
+      end
     end
     return results
   end
@@ -208,6 +274,7 @@ class User < ActiveRecord::Base
     results = crawl_drive("republic of india")
     results.each do |result|
       result.store(:document_type, "Passport")
+      result.store(:ocr, validate_doc(VALIDATION_KEYS["Passport"], result[:name]))
     end
     return results
   end
@@ -217,10 +284,27 @@ class User < ActiveRecord::Base
     results = crawl_drive(s)
     results.each do |result|
       result.store(:document_type, "Pan Card")
+      result.store(:ocr, validate_doc(VALIDATION_KEYS["Pan Card"], result[:name]))
     end
     return results
-
   end
+
+  def validate_doc(document_type, filename)
+    self.update_attribute(:crawl_status, "Validating #{VALIDATION_KEYS.key(document_type)}")
+    # a = {"document_type": "#{document_type}", "document_url": "http://477795b3.ngrok.io/#{filename}"}.to_json.inspect
+    # puts a
+    res = RestClient.post(url, {"document_type": "#{document_type}", "document_url": "http://477795b3.ngrok.io/#{filename}"}.to_json, {content_type: :json}) rescue {}
+    # puts "validation res: #{res.body}"
+    JSON.parse(res.body).with_indifferent_access rescue {}
+  end
+
+VALIDATION_KEYS = {"Passport": "passport", "Pan Card": "personal_pan", "Voter Card": "voter", "Driving Licence": "driving_license"}.with_indifferent_access
+# passport
+# personal_pan
+# aadhaar
+# aadhaar_back
+# voter
+# driving_license
 
 
 
